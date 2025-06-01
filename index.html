@@ -65,6 +65,34 @@
             align-items: center;
             gap: 20px;
         }
+        
+        .upload-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            padding: 40px;
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            background: #fafafa;
+            min-height: 200px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .upload-container.dragover {
+            border-color: #4CAF50;
+            background: #f0f8f0;
+            transform: scale(1.02);
+        }
+
+        #fileName {
+            font-size: 0.9rem;
+            max-width: 300px;
+            word-break: break-all;
+            font-weight: 600;
+            color: #4CAF50;
+        }
 
         .video-container {
             position: relative;
@@ -315,14 +343,19 @@
 
             <div class="camera-section">
                 <div class="camera-container">
+                    <h3 style="color: #333; margin-bottom: 20px; text-align: center;">
+                        📁 Upload Image
+                    </h3>
+                    
                     <div class="video-container" id="videoContainer">
-                        <video id="video" autoplay playsinline></video>
-                        <canvas id="canvas"></canvas>
+                        <div class="upload-container">
+                            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                            <button class="btn btn-secondary" id="uploadBtn">Choose Image File</button>
+                            <div id="fileName" style="margin-top: 10px; color: #666; text-align: center;"></div>
+                        </div>
                     </div>
                     
                     <div class="controls">
-                        <button class="btn btn-primary" id="startCamera">Start Camera</button>
-                        <button class="btn btn-secondary" id="captureBtn" disabled>Capture Image</button>
                         <button class="btn btn-warning" id="detectLeaf" disabled>Detect Leaf</button>
                         <button class="btn btn-warning" id="classifyDisease" disabled>Classify Disease</button>
                     </div>
@@ -345,10 +378,11 @@
     <script>
         class LeafDiseaseApp {
             constructor() {
-                this.video = document.getElementById('video');
-                this.canvas = document.getElementById('canvas');
-                this.ctx = this.canvas.getContext('2d');
-                this.capturedImageData = null;
+                //this.video = document.getElementById('video');
+                //this.canvas = document.getElementById('canvas');
+                //this.ctx = this.canvas.getContext('2d');
+                //this.capturedImageData = null;
+                this.uploadedImageData = null;
                 this.stream = null;
                 this.serverUrl = 'http://localhost:5000'; // Flask server URL
                 
@@ -357,10 +391,16 @@
             }
 
             initializeEventListeners() {
-                document.getElementById('startCamera').addEventListener('click', () => this.startCamera());
-                document.getElementById('captureBtn').addEventListener('click', () => this.captureImage());
+                document.getElementById('uploadBtn').addEventListener('click', () => this.triggerFileUpload());
+                document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileUpload(e));
                 document.getElementById('detectLeaf').addEventListener('click', () => this.detectLeaf());
                 document.getElementById('classifyDisease').addEventListener('click', () => this.classifyDisease());
+
+                // Add drag and drop functionality
+                const uploadContainer = document.querySelector('.upload-container');
+                uploadContainer.addEventListener('dragover', (e) => this.handleDragOver(e));
+                uploadContainer.addEventListener('dragleave', (e) => this.handleDragLeave(e));
+                uploadContainer.addEventListener('drop', (e) => this.handleDrop(e));
             }
 
             async checkServerConnection() {
@@ -381,7 +421,7 @@
                     document.getElementById('serverStatus').style.borderColor = '#f5c6cb';
                 }
             }
-
+            /*
             async startCamera() {
                 try {
                     this.stream = await navigator.mediaDevices.getUserMedia({
@@ -452,7 +492,232 @@
                 // Clear any existing bounding boxes
                 this.clearBoundingBoxes();
             }
+            */
+            
+            triggerFileUpload() {
+                document.getElementById('fileInput').click();
+            }
 
+            handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    this.processUploadedFile(file);
+                }
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+                e.currentTarget.classList.add('dragover');
+            }
+
+            handleDragLeave(e) {
+                e.preventDefault();
+                e.currentTarget.classList.remove('dragover');
+            }
+
+            handleDrop(e) {
+                e.preventDefault();
+                e.currentTarget.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    this.processUploadedFile(files[0]);
+                }
+            }
+
+            processUploadedFile(file) {
+                if (!file.type.startsWith('image/')) {
+                    this.showMessage("Please select a valid image file", "error");
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.uploadedImageData = e.target.result;
+                    this.displayUploadedImage();
+                    
+                    // Enable analysis buttons
+                    document.getElementById('detectLeaf').disabled = false;
+                    document.getElementById('classifyDisease').disabled = false;
+                    
+                    // Show filename
+                    document.getElementById('fileName').textContent = `Selected: ${file.name}`;
+                    
+                    this.showMessage("Image uploaded successfully", "success");
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            displayUploadedImage() {
+                const videoContainer = document.getElementById('videoContainer');
+                
+                // Hide upload container
+                const uploadContainer = document.querySelector('.upload-container');
+                uploadContainer.style.display = 'none';
+                
+                // Create or update uploaded image element
+                let imgElement = document.getElementById('uploadedImage');
+                if (!imgElement) {
+                    imgElement = document.createElement('img');
+                    imgElement.id = 'uploadedImage';
+                    imgElement.className = 'captured-image';
+                    videoContainer.appendChild(imgElement);
+                }
+                
+                imgElement.src = this.uploadedImageData;
+                imgElement.style.display = 'block';
+                
+                // Clear any existing bounding boxes
+                this.clearBoundingBoxes();
+            }
+            
+            /*
+            
+            displayUploadedImage() {
+                const videoContainer = document.getElementById('videoContainer');
+                
+                // Hide video if active
+                this.video.style.display = 'none';
+                
+                // Create or update uploaded image element
+                let imgElement = document.getElementById('uploadedImage');
+                if (!imgElement) {
+                    imgElement = document.createElement('img');
+                    imgElement.id = 'uploadedImage';
+                    imgElement.className = 'captured-image';
+                    videoContainer.appendChild(imgElement);
+                } else {
+                    // Hide captured image if exists
+                    const capturedImg = document.getElementById('capturedImage');
+                    if (capturedImg) capturedImg.style.display = 'none';
+                }
+                
+                imgElement.src = this.uploadedImageData;
+                imgElement.style.display = 'block';
+                
+                // Clear any existing bounding boxes
+                this.clearBoundingBoxes();
+            }
+            
+            
+            async detectLeafFromFile() {
+                if (!this.uploadedImageData) {
+                    this.showMessage("Please upload an image first", "error");
+                    return;
+                }
+
+                this.showLoading(true);
+                
+                try {
+                    const response = await fetch(this.uploadedImageData);
+                    const blob = await response.blob();
+                    
+                    const formData = new FormData();
+                    formData.append('image', blob, 'uploaded_image.jpg');
+                    
+                    const serverResponse = await fetch(`${this.serverUrl}/detect`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!serverResponse.ok) {
+                        throw new Error(`Server error: ${serverResponse.status}`);
+                    }
+                    
+                    const results = await serverResponse.json();
+                    
+                    if (results.success) {
+                        this.displayDetectionResults("Leaf Detection Results (Uploaded Image)", results.detections);
+                        this.drawBoundingBoxesForUploaded(results.detections);
+                    } else {
+                        throw new Error(results.error || 'Detection failed');
+                    }
+                    
+                } catch (error) {
+                    this.showMessage("Error during leaf detection: " + error.message, "error");
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            async classifyDiseaseFromFile() {
+                if (!this.uploadedImageData) {
+                    this.showMessage("Please upload an image first", "error");
+                    return;
+                }
+
+                this.showLoading(true);
+                
+                try {
+                    const response = await fetch(this.uploadedImageData);
+                    const blob = await response.blob();
+                    
+                    const formData = new FormData();
+                    formData.append('image', blob, 'uploaded_image.jpg');
+                    
+                    const serverResponse = await fetch(`${this.serverUrl}/classify`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!serverResponse.ok) {
+                        throw new Error(`Server error: ${serverResponse.status}`);
+                    }
+                    
+                    const results = await serverResponse.json();
+                    
+                    if (results.success) {
+                        this.displayClassificationResults("Disease Classification Results (Uploaded Image)", results.predictions);
+                    } else {
+                        throw new Error(results.error || 'Classification failed');
+                    }
+                    
+                } catch (error) {
+                    this.showMessage("Error during disease classification: " + error.message, "error");
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            drawBoundingBoxesForUploaded(detections) {
+                this.clearBoundingBoxes();
+                
+                const imgElement = document.getElementById('uploadedImage');
+                if (!imgElement || !detections) return;
+                
+                const container = imgElement.parentElement;
+                
+                detections.forEach((detection, index) => {
+                    const bbox = detection.bbox;
+                    if (!bbox || bbox.length < 4) return;
+                    
+                    // Calculate scaled coordinates
+                    const scaleX = imgElement.offsetWidth / imgElement.naturalWidth;
+                    const scaleY = imgElement.offsetHeight / imgElement.naturalHeight;
+                    
+                    const x = bbox[0] * scaleX;
+                    const y = bbox[1] * scaleY;
+                    const width = bbox[2] * scaleX;
+                    const height = bbox[3] * scaleY;
+                    
+                    // Create bounding box element
+                    const bboxDiv = document.createElement('div');
+                    bboxDiv.className = 'bbox-overlay';
+                    bboxDiv.style.left = `${x}px`;
+                    bboxDiv.style.top = `${y}px`;
+                    bboxDiv.style.width = `${width}px`;
+                    bboxDiv.style.height = `${height}px`;
+                    
+                    // Create label
+                    const labelDiv = document.createElement('div');
+                    labelDiv.className = 'bbox-label';
+                    labelDiv.textContent = `${detection.class} (${(detection.confidence * 100).toFixed(1)}%)`;
+                    
+                    bboxDiv.appendChild(labelDiv);
+                    container.appendChild(bboxDiv);
+                });
+            }
+            
             async detectLeaf() {
                 if (!this.capturedImageData) {
                     this.showMessage("Please capture an image first", "error");
@@ -577,7 +842,127 @@
                     container.appendChild(bboxDiv);
                 });
             }
+            
+            */
+            
+            async detectLeaf() {
+                if (!this.uploadedImageData) {
+                    this.showMessage("Please upload an image first", "error");
+                    return;
+                }
 
+                this.showLoading(true);
+                
+                try {
+                    const response = await fetch(this.uploadedImageData);
+                    const blob = await response.blob();
+                    
+                    const formData = new FormData();
+                    formData.append('image', blob, 'uploaded_image.jpg');
+                    
+                    const serverResponse = await fetch(`${this.serverUrl}/detect`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!serverResponse.ok) {
+                        throw new Error(`Server error: ${serverResponse.status}`);
+                    }
+                    
+                    const results = await serverResponse.json();
+                    
+                    if (results.success) {
+                        this.displayDetectionResults("Leaf Detection Results", results.detections);
+                        this.drawBoundingBoxes(results.detections);
+                    } else {
+                        throw new Error(results.error || 'Detection failed');
+                    }
+                    
+                } catch (error) {
+                    this.showMessage("Error during leaf detection: " + error.message, "error");
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+            
+            async classifyDisease() {
+                if (!this.uploadedImageData) {
+                    this.showMessage("Please upload an image first", "error");
+                    return;
+                }
+
+                this.showLoading(true);
+                
+                try {
+                    const response = await fetch(this.uploadedImageData);
+                    const blob = await response.blob();
+                    
+                    const formData = new FormData();
+                    formData.append('image', blob, 'uploaded_image.jpg');
+                    
+                    const serverResponse = await fetch(`${this.serverUrl}/classify`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!serverResponse.ok) {
+                        throw new Error(`Server error: ${serverResponse.status}`);
+                    }
+                    
+                    const results = await serverResponse.json();
+                    
+                    if (results.success) {
+                        this.displayClassificationResults("Disease Classification Results", results.predictions);
+                    } else {
+                        throw new Error(results.error || 'Classification failed');
+                    }
+                    
+                } catch (error) {
+                    this.showMessage("Error during disease classification: " + error.message, "error");
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+            
+            drawBoundingBoxes(detections) {
+                this.clearBoundingBoxes();
+                
+                const imgElement = document.getElementById('uploadedImage');
+                if (!imgElement || !detections) return;
+                
+                const container = imgElement.parentElement;
+                
+                detections.forEach((detection, index) => {
+                    const bbox = detection.bbox;
+                    if (!bbox || bbox.length < 4) return;
+                    
+                    // Calculate scaled coordinates
+                    const scaleX = imgElement.offsetWidth / imgElement.naturalWidth;
+                    const scaleY = imgElement.offsetHeight / imgElement.naturalHeight;
+                    
+                    const x = bbox[0] * scaleX;
+                    const y = bbox[1] * scaleY;
+                    const width = bbox[2] * scaleX;
+                    const height = bbox[3] * scaleY;
+                    
+                    // Create bounding box element
+                    const bboxDiv = document.createElement('div');
+                    bboxDiv.className = 'bbox-overlay';
+                    bboxDiv.style.left = `${x}px`;
+                    bboxDiv.style.top = `${y}px`;
+                    bboxDiv.style.width = `${width}px`;
+                    bboxDiv.style.height = `${height}px`;
+                    
+                    // Create label
+                    const labelDiv = document.createElement('div');
+                    labelDiv.className = 'bbox-label';
+                    labelDiv.textContent = `${detection.class} (${(detection.confidence * 100).toFixed(1)}%)`;
+                    
+                    bboxDiv.appendChild(labelDiv);
+                    container.appendChild(bboxDiv);
+                });
+            }
+            
             clearBoundingBoxes() {
                 const existingBoxes = document.querySelectorAll('.bbox-overlay');
                 existingBoxes.forEach(box => box.remove());
@@ -595,23 +980,41 @@
                     return;
                 }
                 
-                detections.forEach((detection, index) => {
+                detections.slice(0, 1).forEach((detection, index) => {
                     const resultItem = document.createElement('div');
                     resultItem.className = 'result-item';
                     
                     const confidencePercent = (detection.confidence * 100).toFixed(1);
+                    let confidenceText = `Confidence:`;
+                    
+                    if (detection.confidence < 0.6) {
+                        confidenceText += ' - Not confident in our prediction';
+                    } else {
+                        confidenceText += ' ${confidencePercent}%';
+                    }
+                    
                     const confidenceColor = detection.confidence > 0.8 ? '#27ae60' : 
                                           detection.confidence > 0.6 ? '#f39c12' : '#e74c3c';
                     
-                    resultItem.innerHTML = `
-                        <div class="result-label">Leaf ${index + 1} - ${detection.class}</div>
-                        <div class="result-confidence" style="color: ${confidenceColor}">
-                            Confidence: ${confidencePercent}%
-                        </div>
-                        ${detection.bbox ? `<div style="font-size: 0.9rem; color: #7f8c8d; margin-top: 5px;">
-                            Bounding Box: [${detection.bbox.map(b => b.toFixed(0)).join(', ')}]
-                        </div>` : ''}
-                    `;
+                    
+                    if (detection.confidence >= 0.6 ){
+                        resultItem.innerHTML = `
+                            <div class="result-label">Leaf ${index + 1} - ${detection.class}</div>
+                            <div class="result-confidence" style="color: ${confidenceColor}">
+                                ${confidenceText}
+                            </div>
+                            ${detection.bbox ? `<div style="font-size: 0.9rem; color: #7f8c8d; margin-top: 5px;">
+                                Bounding Box: [${detection.bbox.map(b => b.toFixed(0)).join(', ')}]
+                            </div>` : ''}
+                        `;
+                    } else {
+                        resultItem.innerHTML = `
+                            <div class="result-confidence" style="color: ${confidenceColor}">
+                                ${confidenceText}
+                            </div>
+                        `;
+                    }
+                    
                     
                     resultsDiv.appendChild(resultItem);
                 });
@@ -629,12 +1032,21 @@
                     return;
                 }
                 
-                // Show top 3 predictions
-                predictions.slice(0, 3).forEach((prediction, index) => {
+                // Show top prediction
+                predictions.slice(0, 1).forEach((prediction, index) => {
                     const resultItem = document.createElement('div');
                     resultItem.className = 'result-item';
                     
                     const confidencePercent = (prediction.confidence * 100).toFixed(1);
+                    
+                    let confidenceText = `Confidence:`;
+                    
+                    if (prediction.confidence < 0.6) {
+                        confidenceText += ' - Not confident in our prediction';
+                    } else {
+                        confidenceText = ' ${confidencePercent}%';
+                    }
+                    
                     const confidenceColor = prediction.confidence > 0.8 ? '#27ae60' : 
                                           prediction.confidence > 0.6 ? '#f39c12' : '#e74c3c';
                     
@@ -644,12 +1056,20 @@
                         resultItem.style.borderLeftWidth = '6px';
                     }
                     
-                    resultItem.innerHTML = `
-                        <div class="result-label">${index + 1}. ${prediction.class.replace(/_/g, ' ')}</div>
-                        <div class="result-confidence" style="color: ${confidenceColor}">
-                            Confidence: ${confidencePercent}%
-                        </div>
-                    `;
+                    if (prediction.confidence >= 0.6){
+                        resultItem.innerHTML = `
+                            <div class="result-label">${index + 1}. ${prediction.class.replace(/_/g, ' ')}</div>
+                            <div class="result-confidence" style="color: ${confidenceColor}">
+                                ${confidenceText}
+                            </div>
+                        `;
+                    } else {
+                        resultItem.innerHTML = `
+                            <div class="result-confidence" style="color: ${confidenceColor}">
+                                ${confidenceText}
+                            </div>
+                        `;
+                    }
                     
                     resultsDiv.appendChild(resultItem);
                 });
