@@ -989,8 +989,6 @@
                     
                     if (detection.confidence < 0.6) {
                         confidenceText += ' - Not confident in our prediction';
-                    } else {
-                        confidenceText += ' ${confidencePercent}%';
                     }
                     
                     const confidenceColor = detection.confidence > 0.8 ? '#27ae60' : 
@@ -1001,7 +999,7 @@
                         resultItem.innerHTML = `
                             <div class="result-label">Leaf ${index + 1} - ${detection.class}</div>
                             <div class="result-confidence" style="color: ${confidenceColor}">
-                                ${confidenceText}
+                                Confidence: ${confidencePercent}%
                             </div>
                             ${detection.bbox ? `<div style="font-size: 0.9rem; color: #7f8c8d; margin-top: 5px;">
                                 Bounding Box: [${detection.bbox.map(b => b.toFixed(0)).join(', ')}]
@@ -1043,8 +1041,6 @@
                     
                     if (prediction.confidence < 0.6) {
                         confidenceText += ' - Not confident in our prediction';
-                    } else {
-                        confidenceText = ' ${confidencePercent}%';
                     }
                     
                     const confidenceColor = prediction.confidence > 0.8 ? '#27ae60' : 
@@ -1060,7 +1056,7 @@
                         resultItem.innerHTML = `
                             <div class="result-label">${index + 1}. ${prediction.class.replace(/_/g, ' ')}</div>
                             <div class="result-confidence" style="color: ${confidenceColor}">
-                                ${confidenceText}
+                                Confidence: ${confidencePercent}%
                             </div>
                         `;
                     } else {
