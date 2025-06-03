@@ -44,11 +44,6 @@ Then visit `http://localhost:8000`
 
 ## 🎯 Features
 
-### 📷 Live Camera Capture
-- Access device camera (desktop/mobile)
-- Real-time video feed
-- Capture high-quality images
-
 ### 🔍 Leaf Detection (YOLO)
 - Detect and locate leaves in images
 - Draw bounding boxes around detected leaves
@@ -62,11 +57,6 @@ Then visit `http://localhost:8000`
   - **Rice**: Brown Spot, Healthy, Leaf Blast, Neck Blast
   - **Wheat**: Brown Rust, Healthy, Yellow Rust
   - **Sugarcane**: Red Rot, Healthy, Bacterial Blight
-
-### 📱 Responsive Design
-- Works on desktop and mobile devices
-- Touch-friendly interface
-- Optimized for various screen sizes
 
 ## 🛠️ Technical Details
 
